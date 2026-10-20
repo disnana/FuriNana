@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1224">
+  <meta name="description" content="FuriIME: capture Japanese IME readings and generate furigana without external APIs. Live browser demo.">
+  <title>FuriIME — Furigana from your IME</title>
+  <style>
+    :root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Yu Gothic UI', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif; color-scheme: dark; --bg:#090e1d; --panel:#121a2c; --muted:#a4b0c9; --line:#2b3954; --white:#f4f7ff; --cyan:#80e4ef; --violet:#ad9dff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--white); min-height: 100vh; background: radial-gradient(ellipse 600px 360px at 75% -12%, #4136718a, transparent), radial-gradient(ellipse 480px 240px at -6% 28%, #164b6580, transparent), var(--bg); }
+    body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity:.10; background-image:linear-gradient(#fff1 1px, transparent 1px),linear-gradient(90deg,#fff1 1px,transparent 1px);background-size:50px 50px;mask-image:linear-gradient(to bottom,black,transparent 75%); }
+    .shell { max-width:1080px; margin:0 auto; padding:26px 20px 70px; position:relative; }
+    .nav { display:flex; justify-content:space-between; gap:14px; align-items:center; padding-bottom:52px; }
+    .brand { display:flex;align-items:center;gap:12px;font-size:18px;font-weight:800;letter-spacing:-.03em; }
+    .mark { width:36px;height:36px;border-radius:12px;background:linear-gradient(130deg,var(--cyan),#867eff); color:#0a1630;display:grid;place-items:center;font-weight:900; }
+    .rightnav { display:flex; gap:10px; align-items:center; flex-wrap:wrap;justify-content:flex-end; }
+    .version,.nav a,.language { padding:8px 12px;border:1px solid #34435d;background:#ffffff0a;border-radius:9px;color:#c7d4ef;font-size:13px;text-decoration:none; }
+    .nav a:hover,.language:hover { border-color:#8ad7eb;color:white; }
+    .language { cursor:pointer;font:inherit;font-size:13px; }
+    .hero { margin:0 0 42px;max-width:810px; }
+    .eyebrow { color:var(--cyan);font-weight:700;letter-spacing:.17em;text-transform:uppercase;font-size:12px;margin-bottom:15px; }
+    h1 { font-size:clamp(2.25rem,6.7vw,4.4rem);letter-spacing:-.055em;line-height:1.12;margin:0 0 22px;font-weight:840; }
+    h1 em { font-style:normal;background:linear-gradient(90deg,#8cdbeb,#ad9bff);background-clip:text;-webkit-background-clip:text;color:transparent; }
+    .subtitle { color:#bac8df;line-height:1.85;font-size:16px;max-width:715px; }
+    .pills { display:flex;gap:10px;flex-wrap:wrap;margin-top:22px; }
+    .pill {font-size:12px;background:#86d8e613;color:#b2eaf6;border:1px solid #6eb3c149;border-radius:100px;padding:7px 11px;}
+    .board { display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,1fr);gap:16px; }
+    .card {background:#121a2ce8; border:1px solid #2c3a55;border-radius:18px;box-shadow:0 16px 55px #0002;overflow:hidden; }
+    .card-top {padding:22px 24px 0;display:flex;gap:12px;align-items:center;justify-content:space-between; }
+    h2 {font-size:15px;font-weight:730;margin:0;letter-spacing:-.01em;}
+    .small {font-size:12px;color:#9aa8c2;}
+    .card-body {padding:16px 24px 24px;}
+    textarea { display:block;width:100%;resize:vertical;min-height:220px;border-radius:12px;background:#090f20;border:1px solid #364762;color:var(--white);padding:17px;font:18px/1.9 inherit;outline:none; }
+    textarea:focus {border-color:#83ddec;box-shadow:0 0 0 3px #82daed1e;}
+    textarea::placeholder {color:#6f819d;}
+    .hint {line-height:1.65;font-size:12px;color:#a6b6d4;margin:12px 0 0; }
+    .hint strong {color:#dceaff;}
+    .actions {display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+    button,.btn {border-radius:9px;padding:10px 14px;background:#202f48;border:1px solid #435470;color:#e6efff;font:inherit;font-size:13px;cursor:pointer;transition:background .15s,border .15s;}
+    button:hover {background:#2f4364;border-color:#7c91b8;}
+    button.primary {background:#7bd6e1;color:#081728;border:1px solid #8ce9ef;font-weight:740;}
+    button.primary:hover {background:#a4eef4;}
+    .switcher {display:flex; gap:6px;padding:4px;background:#0b1223;border:1px solid #31435d;border-radius:11px;}
+    .switcher button {padding:7px 11px;border:0;background:transparent;color:#9fb0ca;}
+    .switcher button.selected {background:#314763;color:white;}
+    .readout {min-height:220px;line-height:3;overflow-wrap:anywhere;white-space:pre-wrap;font-size:clamp(20px,3vw,27px);background:#090f20;border:1px solid #364762;border-radius:12px;padding:17px;}
+    ruby { ruby-position:over; }
+    rt {color:#87e0ee;font-size:.52em;font-weight:500;user-select:none;}
+    .statusbar {display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:13px;}
+    .dot {width:8px;height:8px;background:#c5a67c;border-radius:50%;box-shadow:0 0 0 3px #d7b97e23;}
+    .dot.ok {background:#80e4b8;box-shadow:0 0 0 3px #80e4b823;}
+    .info {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px;}
+    .metric {background:#101a2c;border:1px solid #293a57;border-radius:12px;padding:15px 18px;}
+    .metric b {font-size:22px;display:block;margin-top:7px;}
+    .settings {display:flex; flex-wrap:wrap;gap:9px 18px;align-items:center;margin-top:16px;}
+    .font-select {background:#0b1223;color:#e6efff;border:1px solid #405370;border-radius:9px;padding:9px 12px;font:inherit;font-size:13px;max-width:100%;min-width:210px;cursor:pointer;}
+    .font-select:focus-visible {outline:2px solid #80e4ef;outline-offset:2px;}
+    .font-note {font-size:11px;color:#9aa8c2;margin:4px 0 0;line-height:1.65;}
+    .settings label {cursor:pointer;color:#c6d3eb;font-size:13px;display:flex;gap:7px;align-items:center;}
+    input[type=checkbox] {accent-color:#80dce8;width:15px;height:15px;}
+    .below {display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;}
+    .code {height:210px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#090f20;color:#c9d7f3;font:12px/1.7 ui-monospace, SFMono-Regular, Consolas, monospace;border:1px solid #30425e;border-radius:12px;padding:14px;}
+    .note {font-size:12px;line-height:1.8;color:#aab9d4;margin:14px 0 0;}
+    code {font-family:ui-monospace, SFMono-Regular, Consolas, monospace;}
+    .section-bottom {margin-top:40px;padding:26px 0 0;border-top:1px solid #293952;color:#aab9d1;line-height:1.8;font-size:13px;}
+    .section-bottom strong {color:#eff5ff;}
+    .footer {display:flex;gap:16px;flex-wrap:wrap;margin-top:24px;font-size:12px;color:#899bb8;}
+    .footer a {color:#ace5f0;}
+    @media(max-width:780px) {.nav {padding-bottom:40px;}.board,.below {grid-template-columns:1fr;}.info {grid-template-columns:repeat(3,1fr);}.shell {padding-inline:14px;}.card-top {padding-inline:18px;}.card-body {padding-inline:18px;} .metric {padding:12px;} .nav .version {display:none;} }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <nav class="nav" aria-label="Navigation">
+    <div class="brand"><span class="mark">ふ</span> FuriIME</div>
+    <div class="rightnav">
+      <span class="version">v0.1.0 · MIT</span>
+      <button class="language" id="language" aria-label="Switch language">English</button>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="eyebrow" data-i18n="eyebrow">INPUT-FIRST FURIGANA</div>
+    <h1 data-i18n-html="headline">読みを推測しない。<br><em>入力から、ふりがなへ。</em></h1>
+    <p class="subtitle" data-i18n="subtitle">日本語IMEの変換前に現れる「かな」を記録し、確定した漢字と対応付ける軽量ライブラリ。APIも辞書も不要。好きなフォントでルビを表示できます。</p>
+    <div class="pills"><span class="pill">Zero dependencies</span><span class="pill">TypeScript</span><span class="pill">React + Vite</span><span class="pill">Open source · MIT</span></div>
+  </header>
+
+  <section class="board">
+    <article class="card">
+      <div class="card-top"><h2 data-i18n="input">01 / IMEで日本語を入力</h2><span class="small">composition events</span></div>
+      <div class="card-body">
+        <textarea id="editor" spellcheck="false" aria-label="Japanese IME input" placeholder="例：かくにんは → 確認は"></textarea>
+        <p class="hint" data-i18n-html="inputHint"><strong>試してみよう：</strong>「かくにんは → 確認は」「りよう → 利用」「ひとけ → 人気」をIMEで変換してください。</p>
+        <div class="actions"><button id="clear" data-i18n="clear">入力をクリア</button><button class="primary" id="copy" data-i18n="copy">ルビ付きHTMLをコピー</button></div>
+      </div>
+    </article>
+    <article class="card">
+      <div class="card-top"><h2 data-i18n="preview">02 / ルビ付きプレビュー</h2><span class="small" id="matched">0 ruby tokens</span></div>
+      <div class="card-body">
+        <div class="readout" id="preview" aria-live="polite"></div>
+        <div class="statusbar"><span class="dot" id="statusDot"></span><span class="small" id="status" role="status">入力を待っています</span></div>
+        <div class="settings">
+          <span class="small" data-i18n="script">出力する文字種</span>
+          <div class="switcher" role="group" aria-label="Reading script">
+            <button data-script="hiragana" class="selected" aria-pressed="true" data-i18n="hiragana">ひらがな</button>
+            <button data-script="katakana" aria-pressed="false" data-i18n="katakana">カタカナ</button>
+          </div>
+        </div>
+        <div class="settings">
+          <label for="fontFamily" data-i18n="fontLabel">プレビューのフォント</label>
+          <select id="fontFamily" class="font-select" aria-label="Preview font">
+            <option value="system" data-i18n="fontSystem">システム標準（通信不要）</option>
+            <option value="noto-sans">Noto Sans JP</option>
+            <option value="noto-serif">Noto Serif JP</option>
+            <option value="zen-maru">Zen Maru Gothic</option>
+            <option value="mplus">M PLUS 1p</option>
+          </select>
+        </div>
+        <p class="font-note" data-i18n="fontNote">選択したWebフォントのみGoogle Fontsから読み込みます（通信が発生します）。日本語のオープンライセンスフォントを使用しています。</p>
+        <div class="settings">
+          <label><input type="checkbox" id="showSource" checked> <span data-i18n="source">取得元</span></label>
+          <label><input type="checkbox" id="showConfidence"> <span data-i18n="confidence">信頼度（参考）</span></label>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <div class="info">
+    <div class="metric"><span class="small" data-i18n="count">取得したルビ</span><b id="count">0</b></div>
+    <div class="metric"><span class="small" data-i18n="composing">IME変換中</span><b id="composing">No</b></div>
+    <div class="metric"><span class="small" data-i18n="mode">読みの文字種</span><b id="mode">ひらがな</b></div>
+  </div>
+
+  <div class="below">
+    <article class="card"><div class="card-top"><h2 data-i18n="json">03 / 選択したJSON出力</h2><span class="small">getResult()</span></div><div class="card-body"><pre class="code" id="json">{}</pre></div></article>
+    <article class="card"><div class="card-top"><h2 data-i18n="log">04 / イベントログ</h2><span class="small" data-i18n="latest">最新20件</span></div><div class="card-body"><pre class="code" id="log"></pre><p class="note" data-i18n="logHint">ログはこの画面内だけに表示され、外部には送信されません。</p></div></article>
+  </div>
+
+  <section class="section-bottom">
+    <strong data-i18n="noteTitle">精度・制限について</strong>
+    <p data-i18n="noteBody">このデモは辞書やAIで読みを推測しません。IMEによっては変換前のかなが取得できないため、変換が曖昧な場合はルビを付けません。貼り付けにはIMEの履歴がないため、漢字の読みを生成できません。IME変換中の文字列は外部へ送信しません。</p>
+    <div class="footer"><span>FuriIME © 2026 tp-li · MIT License</span><span data-i18n="local">100% browser-side · No external API</span></div>
+  </section>
+</div>
+<script>
+(function (global) {
+'use strict';
+/**
+ * FuriIME — dependency-free reading capture from Japanese IME composition events.
+ * No dictionary, network access, or global listeners. Browser input/textarea only.
+ * MIT License.
+ */
+
+const DEFAULT_OUTPUT = Object.freeze({
+  text: true,
+  reading: false,
+  tokens: true,
+  ruby: false,
+  source: false,
+  confidence: false,
+});
+const HAN = /[\p{Script=Han}々〆ヶ]/u;
+const HIRAGANA = /^[\u3040-\u309fー]+$/u;
+const KANA_CHAR = /[\u3040-\u30ffー]/u;
+const MAX_COMPOSITION_STATES = 128;
+const MAX_ALIGNMENT_LENGTH = 256;
+const MAX_ALIGNMENT_UNITS = 48;
+const MAX_ALIGNMENT_STEPS = 6000;
+
+function toHiragana(text) {
+  return String(text).normalize('NFKC').replace(/[ァ-ヶ]/g, (char) =>
+    String.fromCharCode(char.charCodeAt(0) - 0x60));
+}
+
+function toKatakana(text) {
+  return toHiragana(text).replace(/[ぁ-ゖ]/g, (char) =>
+    String.fromCharCode(char.charCodeAt(0) + 0x60));
+}
+
+/** Convert kana without translating kanji. */
+function convertReading(text, script = 'hiragana') {
+  if (script !== 'hiragana' && script !== 'katakana') {
+    throw new TypeError('reading must be "hiragana" or "katakana"');
+  }
+  return script === 'hiragana' ? toHiragana(text) : toKatakana(text);
+}
+
+function normalizeCandidate(value) {
+  const canonical = toHiragana(value).replace(/[\s\u3000、。・!?！？]/gu, '');
+  return canonical && HIRAGANA.test(canonical) && /[ぁ-ゖ]/u.test(canonical)
+    ? canonical : null;
+}
+
+function unitsOf(committed) {
+  const units = [];
+  let offset = 0;
+  for (const char of committed) {
+    const kind = HAN.test(char) ? 'han' : KANA_CHAR.test(char) ? 'kana' : 'other';
+    const last = units.at(-1);
+    if (last && last.kind === kind) {
+      last.text += char;
+      last.end += char.length;
+    } else {
+      units.push({ kind, text: char, start: offset, end: offset + char.length });
+    }
+    offset += char.length;
+  }
+  return units;
+}
+
+/**
+ * Align a provided *known* kana reading with kanji spans in committed text.
+ * Returns [] when there is no unambiguous segmentation; never guesses pronunciations.
+ * Indices are UTF-16 offsets, suitable for textarea selectionStart/selectionEnd.
+ */
+function alignReading(committed, reading) {
+  if (typeof committed !== 'string' || typeof reading !== 'string') {
+    throw new TypeError('committed and reading must be strings');
+  }
+  if (!HAN.test(committed)) return [];
+  const source = normalizeCandidate(reading);
+  if (!source || source.length > MAX_ALIGNMENT_LENGTH || committed.length > MAX_ALIGNMENT_LENGTH) return [];
+  const units = unitsOf(committed);
+  if (units.length > MAX_ALIGNMENT_UNITS) return [];
+  let steps = 0;
+  const solutions = [];
+  function visit(index, pos, spans) {
+    if (solutions.length > 1 || ++steps > MAX_ALIGNMENT_STEPS) return;
+    if (index === units.length) {
+      if (pos === source.length) solutions.push(spans.slice());
+      return;
+    }
+    const unit = units[index];
+    if (unit.kind === 'other') {
+      visit(index + 1, pos, spans);
+    } else if (unit.kind === 'kana') {
+      const anchor = toHiragana(unit.text);
+      if (source.startsWith(anchor, pos)) visit(index + 1, pos + anchor.length, spans);
+    } else {
+      // Cap work on hostile/very long input; ambiguity causes a safe rejection.
+      const max = Math.min(source.length - pos, Math.max(12, [...unit.text].length * 6));
+      for (let len = 1; len <= max && solutions.length <= 1 && steps <= MAX_ALIGNMENT_STEPS; len++) {
+        spans.push({ start: unit.start, end: unit.end, reading: source.slice(pos, pos + len) });
+        visit(index + 1, pos + len, spans);
+        spans.pop();
+      }
+    }
+  }
+  visit(0, 0, []);
+  // If search was capped, it cannot prove that the match is unique.
+  return steps > MAX_ALIGNMENT_STEPS || solutions.length !== 1 ? [] : solutions[0];
+}
+
+function escapeHTML(value) {
+  return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/** Safely render text + reading marks. No direct user input reaches HTML markup. */
+function toRubyHTML(text, marks, script = 'hiragana') {
+  if (typeof text !== 'string' || !Array.isArray(marks)) {
+    throw new TypeError('text must be a string and marks must be an array');
+  }
+  let cursor = 0;
+  let result = '';
+  for (const mark of [...marks].sort((a, b) => a.start - b.start)) {
+    if (!Number.isInteger(mark.start) || !Number.isInteger(mark.end) ||
+        mark.start < cursor || mark.end <= mark.start || mark.end > text.length ||
+        typeof mark.reading !== 'string') continue;
+    result += escapeHTML(text.slice(cursor, mark.start));
+    result += `<ruby>${escapeHTML(text.slice(mark.start, mark.end))}<rt>${escapeHTML(convertReading(mark.reading, script))}</rt></ruby>`;
+    cursor = mark.end;
+  }
+  return result + escapeHTML(text.slice(cursor));
+}
+
+function diff(previous, current) {
+  let start = 0;
+  while (start < previous.length && start < current.length && previous[start] === current[start]) start++;
+  let endA = previous.length;
+  let endB = current.length;
+  while (endA > start && endB > start && previous[endA - 1] === current[endB - 1]) {
+    endA--;
+    endB--;
+  }
+  return { start, oldEnd: endA, inserted: current.slice(start, endB) };
+}
+
+function selectionEdit(previous, current, hint) {
+  if (!hint || !Number.isInteger(hint.start) || !Number.isInteger(hint.end)) {
+    return diff(previous, current);
+  }
+  let { start, end } = hint;
+  const removed = previous.length - current.length;
+  if (start === end && removed > 0 && hint.inputType === 'deleteContentBackward') {
+    start = Math.max(0, start - removed);
+  } else if (start === end && removed > 0 && hint.inputType === 'deleteContentForward') {
+    end = Math.min(previous.length, end + removed);
+  }
+  if (start <= end && previous.slice(0, start) === current.slice(0, start) &&
+      previous.slice(end) === current.slice(current.length - (previous.length - end))) {
+    const insertEnd = current.length - (previous.length - end);
+    if (insertEnd >= start) {
+      return { start, oldEnd: end, inserted: current.slice(start, insertEnd) };
+    }
+  }
+  return diff(previous, current);
+}
+
+function moveMarks(marks, edit) {
+  const { start, oldEnd, inserted } = edit;
+  const delta = inserted.length - (oldEnd - start);
+  const next = [];
+  for (const mark of marks) {
+    if (mark.end <= start) next.push(mark);
+    else if (mark.start >= oldEnd) next.push({ ...mark, start: mark.start + delta, end: mark.end + delta });
+    // Anything touching inside the mark invalidates that reading.
+  }
+  return next;
+}
+
+function normalizedOptions(input, previous) {
+  const merged = {
+    reading: input.reading ?? previous?.reading ?? 'hiragana',
+    output: { ...DEFAULT_OUTPUT, ...previous?.output, ...input.output },
+    onChange: input.onChange ?? previous?.onChange,
+    onCommit: input.onCommit ?? previous?.onCommit,
+    onComposition: input.onComposition ?? previous?.onComposition,
+    onDebug: input.onDebug ?? previous?.onDebug,
+  };
+  if (!['hiragana', 'katakana'].includes(merged.reading)) {
+    throw new TypeError('reading must be "hiragana" or "katakana"');
+  }
+  for (const [key, value] of Object.entries(merged.output)) {
+    if (!(key in DEFAULT_OUTPUT) || typeof value !== 'boolean') {
+      throw new TypeError(`output.${key} must be one of the documented boolean fields`);
+    }
+  }
+  for (const key of ['onChange', 'onCommit', 'onComposition', 'onDebug']) {
+    if (merged[key] != null && typeof merged[key] !== 'function') {
+      throw new TypeError(`${key} must be a function`);
+    }
+  }
+  return merged;
+}
+
+/** Initialize tracking for an input or textarea. No global state is installed. */
+function init(options) {
+  if (!options || typeof options !== 'object') throw new TypeError('init(options) requires an options object');
+  let element = options.element;
+  if (typeof element === 'string') {
+    if (typeof document === 'undefined') throw new Error('CSS selectors require a browser document');
+    element = document.querySelector(element);
+  }
+  if (!element || typeof element.addEventListener !== 'function' ||
+      typeof element.value !== 'string' ||
+      (typeof element.tagName === 'string' && !['INPUT', 'TEXTAREA'].includes(element.tagName.toUpperCase()))) {
+    throw new TypeError('element must be an input or textarea (or a selector for one)');
+  }
+  let config = normalizedOptions(options);
+  let active = true;
+  let stableText = element.value;
+  let marks = [];
+  let composing = false;
+  let session = null;
+  let finalizeTimer = null;
+  let editHint = null;
+
+  function debug(type, details = {}) {
+    config.onDebug?.({ type, ...details });
+  }
+
+  function updatePlainText() {
+    if (session || stableText === element.value) return;
+    const edit = selectionEdit(stableText, element.value, editHint);
+    marks = moveMarks(marks, edit);
+    stableText = element.value;
+    editHint = null;
+  }
+
+  function tokensFor(text) {
+    const results = [];
+    let at = 0;
+    for (const mark of marks) {
+      if (mark.start < at || mark.end > text.length) continue;
+      if (at < mark.start) results.push({ text: text.slice(at, mark.start), reading: null, start: at, end: mark.start });
+      const token = {
+        text: text.slice(mark.start, mark.end),
+        reading: convertReading(mark.reading, config.reading),
+        start: mark.start,
+        end: mark.end,
+      };
+      if (config.output.source) token.source = mark.source;
+      if (config.output.confidence) token.confidence = mark.confidence;
+      results.push(token);
+      at = mark.end;
+    }
+    if (at < text.length) results.push({ text: text.slice(at), reading: null, start: at, end: text.length });
+    return results;
+  }
+
+  function fullReading(text) {
+    let offset = 0;
+    let reading = '';
+    for (const mark of marks) {
+      if (mark.start < offset || mark.end > text.length) return null;
+      const plain = text.slice(offset, mark.start);
+      if (HAN.test(plain)) return null;
+      reading += convertReading(plain, config.reading) + convertReading(mark.reading, config.reading);
+      offset = mark.end;
+    }
+    const tail = text.slice(offset);
+    return HAN.test(tail) ? null : reading + convertReading(tail, config.reading);
+  }
+
+  function getResult() {
+    if (!active) throw new Error('FuriIME instance was destroyed');
+    updatePlainText();
+    const text = element.value;
+    const out = {};
+    if (config.output.text) out.text = text;
+    if (config.output.reading) out.reading = fullReading(text);
+    if (config.output.tokens) out.tokens = tokensFor(text);
+    if (config.output.ruby) out.ruby = toRubyHTML(text, marks, config.reading);
+    return out;
+  }
+
+  function notify(reason, extra = {}) {
+    config.onChange?.(getResult(), { reason, ...extra });
+  }
+
+  function finishComposition() {
+    if (!active || !session || !session.ended) return;
+    if (finalizeTimer !== null) clearTimeout(finalizeTimer);
+    finalizeTimer = null;
+    const completed = session;
+    session = null;
+    composing = false;
+    const current = element.value;
+    const change = selectionEdit(completed.before, current, completed.selection);
+    marks = moveMarks(marks, change);
+    const committed = change.inserted;
+    let status = 'no-kanji';
+    let added = 0;
+    if (HAN.test(committed)) {
+      status = 'unavailable';
+      // Most recent fully-kana IME composition wins; no dictionary fallback.
+      for (let i = completed.states.length - 1; i >= 0; i--) {
+        const candidate = completed.states[i];
+        const aligned = alignReading(committed, candidate);
+        if (!aligned.length) continue;
+        // A single reading is directly observed; segmented alignments are heuristic.
+        const confidence = aligned.length === 1 ? 0.95 : 0.80;
+        for (const match of aligned) {
+          marks.push({ ...match, start: match.start + change.start,
+            end: match.end + change.start, source: 'ime', confidence });
+          added++;
+        }
+        status = 'captured';
+        break;
+      }
+    }
+    marks.sort((a, b) => a.start - b.start);
+    stableText = current;
+    editHint = null;
+    debug('commit', { status, committed, added });
+    const metadata = { reason: 'commit', status, committed, added };
+    config.onCommit?.(getResult(), metadata);
+    notify('commit', { status, committed, added });
+  }
+
+  function onCompositionStart(event) {
+    if (session && session.ended) finishComposition();
+    if (session) return;
+    updatePlainText();
+    composing = true;
+    editHint = null;
+    session = {
+      before: element.value,
+      selection: {
+        start: element.selectionStart ?? null,
+        end: element.selectionEnd ?? null,
+        inputType: 'insertCompositionText',
+      },
+      states: [],
+      ended: false,
+    };
+    debug('compositionstart', { data: event.data ?? '' });
+    config.onComposition?.({ phase: 'start', data: event.data ?? '' });
+  }
+
+  function onCompositionUpdate(event) {
+    if (!session) return;
+    const candidate = normalizeCandidate(event.data ?? '');
+    if (candidate && session.states.at(-1) !== candidate) {
+      session.states.push(candidate);
+      if (session.states.length > MAX_COMPOSITION_STATES) session.states.shift();
+    }
+    debug('compositionupdate', { data: event.data ?? '' });
+    config.onComposition?.({ phase: 'update', data: event.data ?? '' });
+  }
+
+  function onCompositionEnd(event) {
+    if (!session) return;
+    composing = false;
+    session.ended = true;
+    debug('compositionend', { data: event.data ?? '' });
+    config.onComposition?.({ phase: 'end', data: event.data ?? '' });
+    // Some browsers deliver the final input before compositionend, others after.
+    finalizeTimer = setTimeout(finishComposition, 0);
+  }
+
+  function onBeforeInput(event) {
+    if (session || event.isComposing) return;
+    editHint = {
+      start: element.selectionStart ?? null,
+      end: element.selectionEnd ?? null,
+      inputType: event.inputType ?? '',
+    };
+  }
+
+  function onInput(event) {
+    if (session) {
+      if (session.ended && !event.isComposing) finishComposition();
+      return;
+    }
+    updatePlainText();
+    const reason = event.inputType === 'insertFromPaste' ? 'paste' :
+      event.inputType === 'deleteByCut' ? 'cut' : 'input';
+    debug(reason, { inputType: event.inputType ?? '' });
+    notify(reason);
+  }
+
+  element.addEventListener('compositionstart', onCompositionStart);
+  element.addEventListener('compositionupdate', onCompositionUpdate);
+  element.addEventListener('compositionend', onCompositionEnd);
+  element.addEventListener('beforeinput', onBeforeInput);
+  element.addEventListener('input', onInput);
+
+  return {
+    getResult,
+    setOptions(next) {
+      if (!active) throw new Error('FuriIME instance was destroyed');
+      if (!next || typeof next !== 'object' || 'element' in next) {
+        throw new TypeError('setOptions accepts reading/output/callback updates, not element');
+      }
+      config = normalizedOptions(next, config);
+      return getResult();
+    },
+    refresh() {
+      if (!active) throw new Error('FuriIME instance was destroyed');
+      updatePlainText();
+      const next = getResult();
+      notify('refresh');
+      return next;
+    },
+    clear() {
+      if (!active) throw new Error('FuriIME instance was destroyed');
+      if (finalizeTimer !== null) clearTimeout(finalizeTimer);
+      finalizeTimer = null;
+      session = null;
+      composing = false;
+      marks = [];
+      element.value = '';
+      stableText = '';
+      editHint = null;
+      notify('clear');
+      return getResult();
+    },
+    destroy() {
+      if (!active) return;
+      active = false;
+      if (finalizeTimer !== null) clearTimeout(finalizeTimer);
+      element.removeEventListener('compositionstart', onCompositionStart);
+      element.removeEventListener('compositionupdate', onCompositionUpdate);
+      element.removeEventListener('compositionend', onCompositionEnd);
+      element.removeEventListener('beforeinput', onBeforeInput);
+      element.removeEventListener('input', onInput);
+      session = null;
+      marks = [];
+    },
+  };
+}
+
+
+global.FuriIME = Object.freeze({ init, convertReading, alignReading, toRubyHTML });
+})(globalThis);
+
+</script>
+<script>
+(() => {
+  'use strict';
+  const $ = selector => document.querySelector(selector);
+  const texts = {
+    ja: {
+      eyebrow: 'INPUT-FIRST FURIGANA', headline: '読みを推測しない。<br><em>入力から、ふりがなへ。</em>',
+      subtitle: '日本語IMEの変換前に現れる「かな」を記録し、確定した漢字と対応付ける軽量ライブラリ。APIも辞書も不要。好きなフォントでルビを表示できます。',
+      input: '01 / IMEで日本語を入力', inputHint: '<strong>試してみよう：</strong>「かくにんは → 確認は」「りよう → 利用」「ひとけ → 人気」をIMEで変換してください。',
+      clear: '入力をクリア', copy: 'ルビ付きHTMLをコピー', preview: '02 / ルビ付きプレビュー', script: '出力する文字種', hiragana: 'ひらがな', katakana: 'カタカナ',
+      fontLabel:'プレビューのフォント',fontSystem:'システム標準（通信不要）',fontNote:'選択したWebフォントのみGoogle Fontsから読み込みます（通信が発生します）。日本語のオープンライセンスフォントを使用しています。',
+      source: '取得元', confidence: '信頼度（参考）', count: '取得したルビ', composing: 'IME変換中', mode: '読みの文字種',
+      json: '03 / 選択したJSON出力', log: '04 / イベントログ', latest: '最新20件', logHint: 'ログはこの画面内だけに表示され、外部には送信されません。',
+      noteTitle: '精度・制限について', noteBody: 'このデモは辞書やAIで読みを推測しません。IMEによっては変換前のかなが取得できないため、変換が曖昧な場合はルビを付けません。貼り付けにはIMEの履歴がないため、漢字の読みを生成できません。IME変換中の文字列は外部へ送信しません。',
+      local: '100% browser-side · No external API', waiting: '入力を待っています', captured: 'IMEの読みを取得しました', unavailable: '読みを取得できませんでした（推測せずに表示）',
+      'no-kanji': '漢字がないため、ルビは不要です', paste: '貼り付け：IMEの読み履歴はありません', cut: '切り取りました', inputStatus: '入力を更新しました', clearStatus:'入力をクリアしました', copyStatus:'HTMLをコピーしました', copyError:'コピーできませんでした', inputPlaceholder:'例：かくにんは → 確認は'
+    },
+    en: {
+      eyebrow:'INPUT-FIRST FURIGANA',headline:'Stop guessing readings.<br><em>Capture them at input.</em>',
+      subtitle:'Capture kana exposed during Japanese IME composition and align it with the committed kanji. No dictionary, external API, or forced font choice.',
+      input:'01 / Type using a Japanese IME', inputHint:'<strong>Try:</strong> convert “かくにんは → 確認は”, “りよう → 利用”, or “ひとけ → 人気” with your Japanese IME.',
+      clear:'Clear input',copy:'Copy ruby HTML',preview:'02 / Live ruby preview',script:'Reading script',hiragana:'Hiragana',katakana:'Katakana',
+      fontLabel:'Preview font',fontSystem:'System default (offline)',fontNote:'Only the selected web font is fetched from Google Fonts (network access required). Fonts are open-licensed.',
+      source:'Source',confidence:'Heuristic score',count:'Ruby spans',composing:'IME composing',mode:'Output script',
+      json:'03 / Selected JSON output',log:'04 / Event log',latest:'Latest 20 events',logHint:'Event logs stay on this page; nothing is uploaded.',
+      noteTitle:'Accuracy and limitations',noteBody:'No dictionary or AI guessing. Some IMEs do not expose the original kana; ambiguous matches are skipped. Pasted text has no composition history, so furigana cannot be inferred. No composition data leaves your browser.',
+      local:'100% browser-side · No external API',waiting:'Ready for input',captured:'IME reading captured',unavailable:'No reliable reading (not guessed)',
+      'no-kanji':'No kanji; no ruby needed',paste:'Pasted text has no IME history',cut:'Cut text',inputStatus:'Input updated',clearStatus:'Input cleared',copyStatus:'Copied HTML',copyError:'Unable to copy',inputPlaceholder:'Try typing かくにんは and converting to 確認は'
+    }
+  };
+  let language = 'ja';
+  let script = 'hiragana';
+  let composing = false;
+  let statusKey = 'waiting';
+  let statusAdded = false;
+  const history = [];
+  const editor = $('#editor');
+  // System font is the default: no remote request until a web font is selected.
+  const previewFonts = {
+    system: { family: 'inherit' },
+    'noto-sans': { family: '"Noto Sans JP", sans-serif', query:'Noto+Sans+JP' },
+    'noto-serif': { family: '"Noto Serif JP", serif', query:'Noto+Serif+JP' },
+    'zen-maru': { family: '"Zen Maru Gothic", sans-serif', query:'Zen+Maru+Gothic' },
+    mplus: { family: '"M PLUS 1p", sans-serif', query:'M+PLUS+1p' }
+  };
+  const loadedFonts = new Set();
+  $('#fontFamily').addEventListener('change', () => {
+    const key = $('#fontFamily').value;
+    const selected = previewFonts[key];
+    if (!selected) return;
+    $('#preview').style.fontFamily = selected.family;
+    if (selected.query && !loadedFonts.has(key)) {
+      loadedFonts.add(key);
+      const fontLink = document.createElement('link');
+      fontLink.rel = 'stylesheet';
+      fontLink.href = 'https://fonts.googleapis.com/css2?family=' + selected.query + ':wght@400;500;700&display=swap';
+      document.head.append(fontLink);
+    }
+  });
+  const log = (message) => {
+    history.unshift(`${new Date().toLocaleTimeString()}  ${message}`);
+    history.length = Math.min(20, history.length);
+    $('#log').textContent = history.join('\n');
+  };
+  const initialOutput = () => ({ text:true, reading:true, tokens:true, ruby:true, source:$('#showSource').checked, confidence:$('#showConfidence').checked });
+  const tracker = globalThis.FuriIME.init({
+    element: editor,
+    reading: script,
+    output: initialOutput(),
+    onComposition(event) {
+      composing = event.phase !== 'end';
+      $('#composing').textContent = composing ? 'Yes' : 'No';
+      if (event.phase === 'start' || event.phase === 'end') log(`composition${event.phase} ${JSON.stringify(event.data)}`);
+    },
+    onChange(result, meta) {
+      statusKey = meta.reason === 'commit' ? meta.status : meta.reason === 'paste' ? 'paste' :
+        meta.reason === 'cut' ? 'cut' : meta.reason === 'clear' ? 'clearStatus' : 'inputStatus';
+      statusAdded = statusKey === 'captured';
+      if (meta.reason !== 'commit') log(`input: ${meta.reason}`);
+      render(result);
+    },
+    onCommit(_result, meta) { log(`commit: ${meta.status}; added=${meta.added}; text=${JSON.stringify(meta.committed)}`); }
+  });
+  function render(result = tracker.getResult()) {
+    $('#preview').innerHTML = result.ruby || '';
+    $('#json').textContent = JSON.stringify(result, null, 2);
+    $('#count').textContent = String(result.tokens?.filter(token => token.reading !== null).length ?? 0);
+    $('#matched').textContent = `${$('#count').textContent} ruby tokens`;
+    $('#composing').textContent = composing ? 'Yes' : 'No';
+    $('#mode').textContent = texts[language][script];
+    $('#status').textContent = texts[language][statusKey];
+    $('#statusDot').classList.toggle('ok', statusAdded);
+  }
+  function applyLanguage() {
+    document.documentElement.lang = language;
+    $('[data-i18n="headline"]');
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = texts[language][el.dataset.i18n]; });
+    document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = texts[language][el.dataset.i18nHtml]; });
+    $('#language').textContent = language === 'ja' ? 'English' : '日本語';
+    editor.placeholder = texts[language].inputPlaceholder;
+    render();
+  }
+  $('#language').addEventListener('click', () => { language = language === 'ja' ? 'en' : 'ja'; applyLanguage(); });
+  document.querySelectorAll('[data-script]').forEach(button => button.addEventListener('click', () => {
+    script = button.dataset.script;
+    document.querySelectorAll('[data-script]').forEach(el => {
+      el.classList.toggle('selected', el.dataset.script === script);
+      el.setAttribute('aria-pressed', el.dataset.script === script ? 'true' : 'false');
+    });
+    tracker.setOptions({ reading:script });
+    render();
+  }));
+  for (const id of ['showSource','showConfidence']) {
+    $('#' + id).addEventListener('change', () => { tracker.setOptions({ output:initialOutput() }); render(); });
+  }
+  $('#clear').addEventListener('click', () => { tracker.clear(); editor.focus(); });
+  $('#copy').addEventListener('click', async () => {
+    const html = tracker.getResult().ruby;
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('Clipboard API not supported');
+      await navigator.clipboard.writeText(html);
+      statusKey='copyStatus';
+    } catch {
+      // file:// and HTTP sites may not permit async clipboard APIs.
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = html;
+        document.body.append(textarea);
+        textarea.select();
+        const copied = document.execCommand('copy');
+        textarea.remove();
+        statusKey = copied ? 'copyStatus' : 'copyError';
+      } catch { statusKey = 'copyError'; }
+    }
+    render();
+  });
+  applyLanguage();
+  log('Ready: Japanese IME composition tracking enabled');
+})();
+</script>
+</body>
+</html>
