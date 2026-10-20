@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1224">
+  <meta name="description" content="FuriIME: capture Japanese IME readings and generate furigana without external APIs. Live browser demo.">
+  <title>FuriIME — Furigana from your IME</title>
+  <style>
+    :root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Yu Gothic UI', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif; color-scheme: dark; --bg:#090e1d; --panel:#121a2c; --muted:#a4b0c9; --line:#2b3954; --white:#f4f7ff; --cyan:#80e4ef; --violet:#ad9dff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--white); min-height: 100vh; background: radial-gradient(ellipse 600px 360px at 75% -12%, #4136718a, transparent), radial-gradient(ellipse 480px 240px at -6% 28%, #164b6580, transparent), var(--bg); }
+    body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity:.10; background-image:linear-gradient(#fff1 1px, transparent 1px),linear-gradient(90deg,#fff1 1px,transparent 1px);background-size:50px 50px;mask-image:linear-gradient(to bottom,black,transparent 75%); }
+    .shell { max-width:1080px; margin:0 auto; padding:26px 20px 70px; position:relative; }
+    .nav { display:flex; justify-content:space-between; gap:14px; align-items:center; padding-bottom:52px; }
+    .brand { display:flex;align-items:center;gap:12px;font-size:18px;font-weight:800;letter-spacing:-.03em; }
+    .mark { width:36px;height:36px;border-radius:12px;background:linear-gradient(130deg,var(--cyan),#867eff); color:#0a1630;display:grid;place-items:center;font-weight:900; }
+    .rightnav { display:flex; gap:10px; align-items:center; flex-wrap:wrap;justify-content:flex-end; }
+    .version,.nav a,.language { padding:8px 12px;border:1px solid #34435d;background:#ffffff0a;border-radius:9px;color:#c7d4ef;font-size:13px;text-decoration:none; }
+    .nav a:hover,.language:hover { border-color:#8ad7eb;color:white; }
+    .language { cursor:pointer;font:inherit;font-size:13px; }
+    .hero { margin:0 0 42px;max-width:810px; }
+    .eyebrow { color:var(--cyan);font-weight:700;letter-spacing:.17em;text-transform:uppercase;font-size:12px;margin-bottom:15px; }
+    h1 { font-size:clamp(2.25rem,6.7vw,4.4rem);letter-spacing:-.055em;line-height:1.12;margin:0 0 22px;font-weight:840; }
+    h1 em { font-style:normal;background:linear-gradient(90deg,#8cdbeb,#ad9bff);background-clip:text;-webkit-background-clip:text;color:transparent; }
+    .subtitle { color:#bac8df;line-height:1.85;font-size:16px;max-width:715px; }
+    .pills { display:flex;gap:10px;flex-wrap:wrap;margin-top:22px; }
+    .pill {font-size:12px;background:#86d8e613;color:#b2eaf6;border:1px solid #6eb3c149;border-radius:100px;padding:7px 11px;}
+    .board { display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,1fr);gap:16px; }
+    .card {background:#121a2ce8; border:1px solid #2c3a55;border-radius:18px;box-shadow:0 16px 55px #0002;overflow:hidden; }
+    .card-top {padding:22px 24px 0;display:flex;gap:12px;align-items:center;justify-content:space-between; }
+    h2 {font-size:15px;font-weight:730;margin:0;letter-spacing:-.01em;}
+    .small {font-size:12px;color:#9aa8c2;}
+    .card-body {padding:16px 24px 24px;}
+    textarea { display:block;width:100%;resize:vertical;min-height:220px;border-radius:12px;background:#090f20;border:1px solid #364762;color:var(--white);padding:17px;font:18px/1.9 inherit;outline:none; }
+    textarea:focus {border-color:#83ddec;box-shadow:0 0 0 3px #82daed1e;}
+    textarea::placeholder {color:#6f819d;}
+    .hint {line-height:1.65;font-size:12px;color:#a6b6d4;margin:12px 0 0; }
+    .hint strong {color:#dceaff;}
+    .actions {display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+    button,.btn {border-radius:9px;padding:10px 14px;background:#202f48;border:1px solid #435470;color:#e6efff;font:inherit;font-size:13px;cursor:pointer;transition:background .15s,border .15s;}
+    button:hover {background:#2f4364;border-color:#7c91b8;}
+    button.primary {background:#7bd6e1;color:#081728;border:1px solid #8ce9ef;font-weight:740;}
+    button.primary:hover {background:#a4eef4;}
+    .switcher {display:flex; gap:6px;padding:4px;background:#0b1223;border:1px solid #31435d;border-radius:11px;}
+    .switcher button {padding:7px 11px;border:0;background:transparent;color:#9fb0ca;}
+    .switcher button.selected {background:#314763;color:white;}
+    .readout {min-height:220px;line-height:3;overflow-wrap:anywhere;white-space:pre-wrap;font-size:clamp(20px,3vw,27px);background:#090f20;border:1px solid #364762;border-radius:12px;padding:17px;}
+    ruby { ruby-position:over; }
+    rt {color:#87e0ee;font-size:.52em;font-weight:500;user-select:none;}
+    .statusbar {display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:13px;}
+    .dot {width:8px;height:8px;background:#c5a67c;border-radius:50%;box-shadow:0 0 0 3px #d7b97e23;}
+    .dot.ok {background:#80e4b8;box-shadow:0 0 0 3px #80e4b823;}
+    .info {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px;}
+    .metric {background:#101a2c;border:1px solid #293a57;border-radius:12px;padding:15px 18px;}
+    .metric b {font-size:22px;display:block;margin-top:7px;}
+    .settings {display:flex; flex-wrap:wrap;gap:9px 18px;align-items:center;margin-top:16px;}
+    .font-select {background:#0b1223;color:#e6efff;border:1px solid #405370;border-radius:9px;padding:9px 12px;font:inherit;font-size:13px;max-width:100%;min-width:210px;cursor:pointer;}
+    .font-select:focus-visible {outline:2px solid #80e4ef;outline-offset:2px;}
+    .font-note {font-size:11px;color:#9aa8c2;margin:4px 0 0;line-height:1.65;}
+    .settings label {cursor:pointer;color:#c6d3eb;font-size:13px;display:flex;gap:7px;align-items:center;}
+    input[type=checkbox] {accent-color:#80dce8;width:15px;height:15px;}
+    .below {display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;}
+    .code {height:210px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#090f20;color:#c9d7f3;font:12px/1.7 ui-monospace, SFMono-Regular, Consolas, monospace;border:1px solid #30425e;border-radius:12px;padding:14px;}
+    .note {font-size:12px;line-height:1.8;color:#aab9d4;margin:14px 0 0;}
+    code {font-family:ui-monospace, SFMono-Regular, Consolas, monospace;}
+    .section-bottom {margin-top:40px;padding:26px 0 0;border-top:1px solid #293952;color:#aab9d1;line-height:1.8;font-size:13px;}
+    .section-bottom strong {color:#eff5ff;}
+    .footer {display:flex;gap:16px;flex-wrap:wrap;margin-top:24px;font-size:12px;color:#899bb8;}
+    .footer a {color:#ace5f0;}
+    @media(max-width:780px) {.nav {padding-bottom:40px;}.board,.below {grid-template-columns:1fr;}.info {grid-template-columns:repeat(3,1fr);}.shell {padding-inline:14px;}.card-top {padding-inline:18px;}.card-body {padding-inline:18px;} .metric {padding:12px;} .nav .version {display:none;} }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <nav class="nav" aria-label="Navigation">
+    <div class="brand"><span class="mark">ふ</span> FuriIME</div>
+    <div class="rightnav">
+      <span class="version">v0.1.0 · MIT</span>
+      <button class="language" id="language" aria-label="Switch language">English</button>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="eyebrow" data-i18n="eyebrow">INPUT-FIRST FURIGANA</div>
+    <h1 data-i18n-html="headline">読みを推測しない。<br><em>入力から、ふりがなへ。</em></h1>
+    <p class="subtitle" data-i18n="subtitle">日本語IMEの変換前に現れる「かな」を記録し、確定した漢字と対応付ける軽量ライブラリ。APIも辞書も不要。好きなフォントでルビを表示できます。</p>
+    <div class="pills"><span class="pill">Zero dependencies</span><span class="pill">TypeScript</span><span class="pill">React + Vite</span><span class="pill">Open source · MIT</span></div>
+  </header>
+
+  <section class="board">
+    <article class="card">
+      <div class="card-top"><h2 data-i18n="input">01 / IMEで日本語を入力</h2><span class="small">composition events</span></div>
+      <div class="card-body">
+        <textarea id="editor" spellcheck="false" aria-label="Japanese IME input" placeholder="例：かくにんは → 確認は"></textarea>
+        <p class="hint" data-i18n-html="inputHint"><strong>試してみよう：</strong>「かくにんは → 確認は」「りよう → 利用」「ひとけ → 人気」をIMEで変換してください。</p>
+        <div class="actions"><button id="clear" data-i18n="clear">入力をクリア</button><button class="primary" id="copy" data-i18n="copy">ルビ付きHTMLをコピー</button></div>
+      </div>
+    </article>
+    <article class="card">
+      <div class="card-top"><h2 data-i18n="preview">02 / ルビ付きプレビュー</h2><span class="small" id="matched">0 ruby tokens</span></div>
+      <div class="card-body">
+        <div class="readout" id="preview" aria-live="polite"></div>
+        <div class="statusbar"><span class="dot" id="statusDot"></span><span class="small" id="status" role="status">入力を待っています</span></div>
+        <div class="settings">
+          <span class="small" data-i18n="script">出力する文字種</span>
+          <div class="switcher" role="group" aria-label="Reading script">
+            <button data-script="hiragana" class="selected" aria-pressed="true" data-i18n="hiragana">ひらがな</button>
+            <button data-script="katakana" aria-pressed="false" data-i18n="katakana">カタカナ</button>
+          </div>
+        </div>
+        <div class="settings">
+          <label for="fontFamily" data-i18n="fontLabel">プレビューのフォント</label>
+          <select id="fontFamily" class="font-select" aria-label="Preview font">
+            <option value="system" data-i18n="fontSystem">システム標準（通信不要）</option>
+            <option value="noto-sans">Noto Sans JP</option>
+            <option value="noto-serif">Noto Serif JP</option>
+            <option value="zen-maru">Zen Maru Gothic</option>
+            <option value="mplus">M PLUS 1p</option>
+          </select>
+        </div>
+        <p class="font-note" data-i18n="fontNote">選択したWebフォントのみGoogle Fontsから読み込みます（通信が発生します）。日本語のオープンライセンスフォントを使用しています。</p>
+        <div class="settings">
+          <label><input type="checkbox" id="showSource" checked> <span data-i18n="source">取得元</span></label>
+          <label><input type="checkbox" id="showConfidence"> <span data-i18n="confidence">信頼度（参考）</span></label>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <div class="info">
+    <div class="metric"><span class="small" data-i18n="count">取得したルビ</span><b id="count">0</b></div>
+    <div class="metric"><span class="small" data-i18n="composing">IME変換中</span><b id="composing">No</b></div>
+    <div class="metric"><span class="small" data-i18n="mode">読みの文字種</span><b id="mode">ひらがな</b></div>
+  </div>
+
+  <div class="below">
+    <article class="card"><div class="card-top"><h2 data-i18n="json">03 / 選択したJSON出力</h2><span class="small">getResult()</span></div><div class="card-body"><pre class="code" id="json">{}</pre></div></article>
+    <article class="card"><div class="card-top"><h2 data-i18n="log">04 / イベントログ</h2><span class="small" data-i18n="latest">最新20件</span></div><div class="card-body"><pre class="code" id="log"></pre><p class="note" data-i18n="logHint">ログはこの画面内だけに表示され、外部には送信されません。</p></div></article>
+  </div>
+
+  <section class="section-bottom">
+    <strong data-i18n="noteTitle">精度・制限について</strong>
+    <p data-i18n="noteBody">このデモは辞書やAIで読みを推測しません。IMEによっては変換前のかなが取得できないため、変換が曖昧な場合はルビを付けません。貼り付けにはIMEの履歴がないため、漢字の読みを生成できません。IME変換中の文字列は外部へ送信しません。</p>
+    <div class="footer"><span>FuriIME © 2026 tp-li · MIT License</span><span data-i18n="local">100% browser-side · No external API</span></div>
+  </section>
+</div>
+<script src="./assets/furi-ime.global.js"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = selector => document.querySelector(selector);
+  const texts = {
+    ja: {
+      eyebrow: 'INPUT-FIRST FURIGANA', headline: '読みを推測しない。<br><em>入力から、ふりがなへ。</em>',
+      subtitle: '日本語IMEの変換前に現れる「かな」を記録し、確定した漢字と対応付ける軽量ライブラリ。APIも辞書も不要。好きなフォントでルビを表示できます。',
+      input: '01 / IMEで日本語を入力', inputHint: '<strong>試してみよう：</strong>「かくにんは → 確認は」「りよう → 利用」「ひとけ → 人気」をIMEで変換してください。',
+      clear: '入力をクリア', copy: 'ルビ付きHTMLをコピー', preview: '02 / ルビ付きプレビュー', script: '出力する文字種', hiragana: 'ひらがな', katakana: 'カタカナ',
+      fontLabel:'プレビューのフォント',fontSystem:'システム標準（通信不要）',fontNote:'選択したWebフォントのみGoogle Fontsから読み込みます（通信が発生します）。日本語のオープンライセンスフォントを使用しています。',
+      source: '取得元', confidence: '信頼度（参考）', count: '取得したルビ', composing: 'IME変換中', mode: '読みの文字種',
+      json: '03 / 選択したJSON出力', log: '04 / イベントログ', latest: '最新20件', logHint: 'ログはこの画面内だけに表示され、外部には送信されません。',
+      noteTitle: '精度・制限について', noteBody: 'このデモは辞書やAIで読みを推測しません。IMEによっては変換前のかなが取得できないため、変換が曖昧な場合はルビを付けません。貼り付けにはIMEの履歴がないため、漢字の読みを生成できません。IME変換中の文字列は外部へ送信しません。',
+      local: '100% browser-side · No external API', waiting: '入力を待っています', captured: 'IMEの読みを取得しました', unavailable: '読みを取得できませんでした（推測せずに表示）',
+      'no-kanji': '漢字がないため、ルビは不要です', paste: '貼り付け：IMEの読み履歴はありません', cut: '切り取りました', inputStatus: '入力を更新しました', clearStatus:'入力をクリアしました', copyStatus:'HTMLをコピーしました', copyError:'コピーできませんでした', inputPlaceholder:'例：かくにんは → 確認は'
+    },
+    en: {
+      eyebrow:'INPUT-FIRST FURIGANA',headline:'Stop guessing readings.<br><em>Capture them at input.</em>',
+      subtitle:'Capture kana exposed during Japanese IME composition and align it with the committed kanji. No dictionary, external API, or forced font choice.',
+      input:'01 / Type using a Japanese IME', inputHint:'<strong>Try:</strong> convert “かくにんは → 確認は”, “りよう → 利用”, or “ひとけ → 人気” with your Japanese IME.',
+      clear:'Clear input',copy:'Copy ruby HTML',preview:'02 / Live ruby preview',script:'Reading script',hiragana:'Hiragana',katakana:'Katakana',
+      fontLabel:'Preview font',fontSystem:'System default (offline)',fontNote:'Only the selected web font is fetched from Google Fonts (network access required). Fonts are open-licensed.',
+      source:'Source',confidence:'Heuristic score',count:'Ruby spans',composing:'IME composing',mode:'Output script',
+      json:'03 / Selected JSON output',log:'04 / Event log',latest:'Latest 20 events',logHint:'Event logs stay on this page; nothing is uploaded.',
+      noteTitle:'Accuracy and limitations',noteBody:'No dictionary or AI guessing. Some IMEs do not expose the original kana; ambiguous matches are skipped. Pasted text has no composition history, so furigana cannot be inferred. No composition data leaves your browser.',
+      local:'100% browser-side · No external API',waiting:'Ready for input',captured:'IME reading captured',unavailable:'No reliable reading (not guessed)',
+      'no-kanji':'No kanji; no ruby needed',paste:'Pasted text has no IME history',cut:'Cut text',inputStatus:'Input updated',clearStatus:'Input cleared',copyStatus:'Copied HTML',copyError:'Unable to copy',inputPlaceholder:'Try typing かくにんは and converting to 確認は'
+    }
+  };
+  let language = 'ja';
+  let script = 'hiragana';
+  let composing = false;
+  let statusKey = 'waiting';
+  let statusAdded = false;
+  const history = [];
+  const editor = $('#editor');
+  // System font is the default: no remote request until a web font is selected.
+  const previewFonts = {
+    system: { family: 'inherit' },
+    'noto-sans': { family: '"Noto Sans JP", sans-serif', query:'Noto+Sans+JP' },
+    'noto-serif': { family: '"Noto Serif JP", serif', query:'Noto+Serif+JP' },
+    'zen-maru': { family: '"Zen Maru Gothic", sans-serif', query:'Zen+Maru+Gothic' },
+    mplus: { family: '"M PLUS 1p", sans-serif', query:'M+PLUS+1p' }
+  };
+  const loadedFonts = new Set();
+  $('#fontFamily').addEventListener('change', () => {
+    const key = $('#fontFamily').value;
+    const selected = previewFonts[key];
+    if (!selected) return;
+    $('#preview').style.fontFamily = selected.family;
+    if (selected.query && !loadedFonts.has(key)) {
+      loadedFonts.add(key);
+      const fontLink = document.createElement('link');
+      fontLink.rel = 'stylesheet';
+      fontLink.href = 'https://fonts.googleapis.com/css2?family=' + selected.query + ':wght@400;500;700&display=swap';
+      document.head.append(fontLink);
+    }
+  });
+  const log = (message) => {
+    history.unshift(`${new Date().toLocaleTimeString()}  ${message}`);
+    history.length = Math.min(20, history.length);
+    $('#log').textContent = history.join('\n');
+  };
+  const initialOutput = () => ({ text:true, reading:true, tokens:true, ruby:true, source:$('#showSource').checked, confidence:$('#showConfidence').checked });
+  const tracker = globalThis.FuriIME.init({
+    element: editor,
+    reading: script,
+    output: initialOutput(),
+    onComposition(event) {
+      composing = event.phase !== 'end';
+      $('#composing').textContent = composing ? 'Yes' : 'No';
+      if (event.phase === 'start' || event.phase === 'end') log(`composition${event.phase} ${JSON.stringify(event.data)}`);
+    },
+    onChange(result, meta) {
+      statusKey = meta.reason === 'commit' ? meta.status : meta.reason === 'paste' ? 'paste' :
+        meta.reason === 'cut' ? 'cut' : meta.reason === 'clear' ? 'clearStatus' : 'inputStatus';
+      statusAdded = statusKey === 'captured';
+      if (meta.reason !== 'commit') log(`input: ${meta.reason}`);
+      render(result);
+    },
+    onCommit(_result, meta) { log(`commit: ${meta.status}; added=${meta.added}; text=${JSON.stringify(meta.committed)}`); }
+  });
+  function render(result = tracker.getResult()) {
+    $('#preview').innerHTML = result.ruby || '';
+    $('#json').textContent = JSON.stringify(result, null, 2);
+    $('#count').textContent = String(result.tokens?.filter(token => token.reading !== null).length ?? 0);
+    $('#matched').textContent = `${$('#count').textContent} ruby tokens`;
+    $('#composing').textContent = composing ? 'Yes' : 'No';
+    $('#mode').textContent = texts[language][script];
+    $('#status').textContent = texts[language][statusKey];
+    $('#statusDot').classList.toggle('ok', statusAdded);
+  }
+  function applyLanguage() {
+    document.documentElement.lang = language;
+    $('[data-i18n="headline"]');
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = texts[language][el.dataset.i18n]; });
+    document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = texts[language][el.dataset.i18nHtml]; });
+    $('#language').textContent = language === 'ja' ? 'English' : '日本語';
+    editor.placeholder = texts[language].inputPlaceholder;
+    render();
+  }
+  $('#language').addEventListener('click', () => { language = language === 'ja' ? 'en' : 'ja'; applyLanguage(); });
+  document.querySelectorAll('[data-script]').forEach(button => button.addEventListener('click', () => {
+    script = button.dataset.script;
+    document.querySelectorAll('[data-script]').forEach(el => {
+      el.classList.toggle('selected', el.dataset.script === script);
+      el.setAttribute('aria-pressed', el.dataset.script === script ? 'true' : 'false');
+    });
+    tracker.setOptions({ reading:script });
+    render();
+  }));
+  for (const id of ['showSource','showConfidence']) {
+    $('#' + id).addEventListener('change', () => { tracker.setOptions({ output:initialOutput() }); render(); });
+  }
+  $('#clear').addEventListener('click', () => { tracker.clear(); editor.focus(); });
+  $('#copy').addEventListener('click', async () => {
+    const html = tracker.getResult().ruby;
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('Clipboard API not supported');
+      await navigator.clipboard.writeText(html);
+      statusKey='copyStatus';
+    } catch {
+      // file:// and HTTP sites may not permit async clipboard APIs.
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = html;
+        document.body.append(textarea);
+        textarea.select();
+        const copied = document.execCommand('copy');
+        textarea.remove();
+        statusKey = copied ? 'copyStatus' : 'copyError';
+      } catch { statusKey = 'copyError'; }
+    }
+    render();
+  });
+  applyLanguage();
+  log('Ready: Japanese IME composition tracking enabled');
+})();
+</script>
+</body>
+</html>
